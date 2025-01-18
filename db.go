@@ -1,10 +1,18 @@
 package main
 
 import (
+    "encoding/csv"
     "fmt"
+    "io"
     "os"
     "path/filepath"
     "time"
+    "strconv"
+)
+
+const (
+    TIMESTAMP_FORMAT = "2006-01-02_15:04:05"
+    DATE_FORMAT = "2006-01-02"
 )
 
 var DatabaseFolder = GetDatabaseFolder()
@@ -41,12 +49,12 @@ func InitNewFile(filename string) error {
 
 // extract date from full timestamp
 func GetCurrentFile(timestamp string) (string, error) {
-    parsedDate, err := time.Parse("2006-01-02_15:04:05", timestamp)
+    parsedDate, err := time.Parse(TIMESTAMP_FORMAT, timestamp)
     if err != nil {
         return "", err
     }
 
-    dateString := parsedDate.Format("2006-01-02")
+    dateString := parsedDate.Format(DATE_FORMAT)
     return filepath.Join(DatabaseFolder, dateString + ".csv"), nil
 }
 
@@ -82,5 +90,84 @@ func WriteDatapoint(data *Datapoint) error {
         fmt.Println(err.Error())
     }
     return err
+}
+
+func ReadDataForStation(station string, date string, start time.Time, end time.Time) ([]Datapoint, error) {
+    f, err := os.Open(filepath.Join(DatabaseFolder, date + ".csv"))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	reader := csv.NewReader(f)
+
+    _, err = reader.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	var datapoints []Datapoint
+
+	for {
+		record, err := reader.Read()
+        if err == io.EOF {
+            break
+        }
+		if err != nil {
+            return datapoints, err
+		}
+
+        timestamp, err := time.Parse(TIMESTAMP_FORMAT, record[0])
+        if err != nil {
+            return datapoints, err
+        }
+		temperature, _ := strconv.ParseFloat(record[2], 32)
+		humidity, _ := strconv.ParseFloat(record[3], 32)
+		pressure, _ := strconv.ParseFloat(record[4], 32)
+		battery, _ := strconv.ParseUint(record[5], 10, 32)
+
+		datapoint := Datapoint{
+			Timestamp:   record[0],
+			Station:     record[1],
+			Temperature: float32(temperature),
+			Humidity:    float32(humidity),
+			Pressure:    float32(pressure),
+			Battery:     uint(battery),
+		}
+
+        if datapoint.Station == station && timestamp.After(start) && timestamp.Before(end) {
+		    datapoints = append(datapoints, datapoint)
+        }
+	}
+
+	return datapoints, nil
+}
+
+func FetchData(req *DataRequest) ([]Datapoint, error) {
+    start, err := time.Parse(TIMESTAMP_FORMAT, req.TimeFrom)
+	if err != nil {
+		return nil, err
+	}
+
+	end, err := time.Parse(TIMESTAMP_FORMAT, req.TimeTo)
+	if err != nil {
+		return nil, err
+	}
+
+    if start.After(end) {
+        return nil, fmt.Errorf("start timestamp must be before or equal to end timestamp")
+    }
+
+    data := []Datapoint{}
+    for current := start; !current.After(end); current = current.AddDate(0, 0, 1) {
+        curData, err := ReadDataForStation(req.Station, current.Format(DATE_FORMAT), start, end)
+        if err != nil {
+            return nil, err
+        }
+
+        data = append(data, curData...)
+	}
+
+    return data, nil
 }
 

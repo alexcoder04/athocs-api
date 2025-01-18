@@ -1,10 +1,63 @@
 package main
 
-import "github.com/gofiber/fiber/v3"
+import (
+    "bufio"
+    "encoding/csv"
+    "fmt"
+    "strconv"
+
+    "github.com/gofiber/fiber/v3"
+)
 
 // fetch data from db
 func DataHandler(c fiber.Ctx) error {
-    return c.SendString("data: not implemented")
+    req := new(DataRequest)
+
+    if err := c.Bind().Query(req); err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+            "error": "Invalid request",
+        })
+    }
+
+    data, err := FetchData(req)
+    if  err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+            "error": "Failed to load data from database",
+        })
+    }
+
+    c.Set("Content-Type", "text/csv")
+    c.Set("Content-Disposition", `attachment; filename="data.csv"`)
+    
+    return c.SendStreamWriter(func(w *bufio.Writer) {
+    	csvWriter := csv.NewWriter(w)
+    
+    	header := []string{"timestamp", "station", "temperature", "humidity", "pressure", "battery"}
+    	if err := csvWriter.Write(header); err != nil {
+    		fmt.Fprintf(w, "Error writing CSV header: %v\n", err)
+    		return
+    	}
+    
+    	for _, dp := range data {
+    		row := []string{
+    			dp.Timestamp,
+    			dp.Station,
+    			strconv.FormatFloat(float64(dp.Temperature), 'f', 2, 32),
+    			strconv.FormatFloat(float64(dp.Humidity), 'f', 2, 32),
+    			strconv.FormatFloat(float64(dp.Pressure), 'f', 2, 32),
+    			strconv.Itoa(int(dp.Battery)),
+    		}
+    		if err := csvWriter.Write(row); err != nil {
+    			fmt.Fprintf(w, "Error writing CSV row: %v\n", err)
+    			return
+    		}
+    	}
+    
+    	csvWriter.Flush()
+    	if err := csvWriter.Error(); err != nil {
+    		return
+    	}
+    })
 }
 
 // upload new data to db
