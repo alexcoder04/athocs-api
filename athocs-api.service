@@ -1,0 +1,12 @@
+[Unit]
+Description=athocs api
+
+[Service]
+User=alex
+Group=alex
+WorkingDirectory=/home/alex/athocs
+ExecStart=/bin/sh /home/alex/athocs/run-api.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
