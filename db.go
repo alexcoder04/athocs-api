@@ -18,11 +18,12 @@ const (
 var DatabaseFolder = GetDatabaseFolder()
 
 func GetDatabaseFolder() string {
-    dir := os.Getenv("ATHOCS_DATABASE_DIR")
-    if dir == "" {
-        dir = "./data"
+    basedir := os.Getenv("ATHOCS_BASE_DIR")
+    if basedir == "" {
+        basedir = "."
     }
 
+    dir := filepath.Join(basedir, "data")
     if _, err := os.Stat(dir); os.IsNotExist(err) {
         err := os.MkdirAll(dir, 0700)
         if err != nil {
