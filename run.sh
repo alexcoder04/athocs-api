@@ -2,5 +2,5 @@
 
 . ~/.profile \
     && cd "$ATHOCS_BASE_DIR" \
-    && exec api/athocs-api
+    && exec ./api/athocs-api
 
