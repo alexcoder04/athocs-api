@@ -5,7 +5,7 @@ Description=athocs api
 User=alex
 Group=alex
 WorkingDirectory=/home/alex/athocs
-ExecStart=./api/run.sh
+ExecStart=/home/alex/athocs/api/run.sh
 Restart=always
 
 [Install]
