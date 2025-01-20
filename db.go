@@ -15,27 +15,6 @@ const (
     DATE_FORMAT = "2006-01-02"
 )
 
-var DatabaseFolder = GetDatabaseFolder()
-
-func GetDatabaseFolder() string {
-    basedir := os.Getenv("ATHOCS_BASE_DIR")
-    if basedir == "" {
-        basedir = "."
-    }
-
-    dir := filepath.Join(basedir, "data")
-    if _, err := os.Stat(dir); os.IsNotExist(err) {
-        err := os.MkdirAll(dir, 0700)
-        if err != nil {
-            panic("data directory does not exist and creating it failed")
-        }
-    } else if err != nil {
-        panic("unknown error while checking for data directory")
-    }
-
-    return dir
-}
-
 // write csv header
 func InitNewFile(filename string) error {
     f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0600)
@@ -56,7 +35,7 @@ func GetCurrentFile(timestamp string) (string, error) {
     }
 
     dateString := parsedDate.Format(DATE_FORMAT)
-    return filepath.Join(DatabaseFolder, dateString + ".csv"), nil
+    return filepath.Join(Config.DBDir, dateString + ".csv"), nil
 }
 
 func WriteDatapoint(data *Datapoint) error {
@@ -94,7 +73,7 @@ func WriteDatapoint(data *Datapoint) error {
 }
 
 func ReadDataForStation(station string, date string, start time.Time, end time.Time) ([]Datapoint, error) {
-    f, err := os.Open(filepath.Join(DatabaseFolder, date + ".csv"))
+    f, err := os.Open(filepath.Join(Config.DBDir, date + ".csv"))
 	if err != nil {
 		return nil, err
 	}
