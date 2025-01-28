@@ -11,16 +11,15 @@ import (
 func main() {
     app := fiber.New()
 
-    // web app
-    app.Get("/portal/*", static.New(filepath.Join(Config.BaseDir, "frontend")))
+    // api
+    app.Get("/api/data", DataHandler)
+    app.Post("/api/upload", UploadHandler)
 
     // graphs
     app.Get("/graphs/*", static.New(filepath.Join(Config.BaseDir, "graphs")))
 
-    // api
-    api := app.Group("/api")
-    api.Post("/upload", UploadHandler)
-    api.Get("/data", DataHandler)
+    // web app
+    app.Get("/*", static.New(filepath.Join(Config.BaseDir, "frontend")))
 
     log.Fatal(app.Listen(":"+Config.Port))
 }
