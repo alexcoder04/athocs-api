@@ -5,6 +5,7 @@ import (
     "encoding/csv"
     "fmt"
     "strconv"
+    "time"
 
     "github.com/gofiber/fiber/v3"
 )
@@ -68,6 +69,11 @@ func UploadHandler(c fiber.Ctx) error {
         return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
             "error": "Invalid data",
         })
+    }
+
+    // esp32 does not have rtc
+    if data.Timestamp == "auto" {
+        data.Timestamp = time.Now().Format("2006-01-02_15:04:05")
     }
 
     if err := WriteDatapoint(data); err != nil {
