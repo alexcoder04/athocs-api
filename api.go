@@ -24,6 +24,7 @@ func DataHandler(c fiber.Ctx) error {
     if  err != nil {
         return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
             "error": "Failed to load data from database",
+            "goError": err.Error(),
         })
     }
 
