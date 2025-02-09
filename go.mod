@@ -4,6 +4,7 @@ go 1.23.3
 
 require (
 	github.com/alexcoder04/ef v0.1.0 // indirect
+	github.com/alexcoder04/friendly/v2 v2.1.1 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/gofiber/fiber/v3 v3.0.0-beta.4 // indirect
