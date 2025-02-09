@@ -1,25 +1,26 @@
 package main
 
 import (
-    "log"
-    "path/filepath"
+	"log"
+	"path/filepath"
 
-    "github.com/gofiber/fiber/v3"
-    "github.com/gofiber/fiber/v3/middleware/static"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/static"
 )
 
 func main() {
-    app := fiber.New()
+	app := fiber.New()
 
-    // api
-    app.Get("/api/data", DataHandler)
-    app.Post("/api/upload", UploadHandler)
+	// api
+	app.Get("/api/data", DataHandler)
+	app.Post("/api/upload", UploadHandler)
+	app.Get("/api/stations", StationsListHandler)
 
-    // graphs
-    app.Get("/graphs/*", static.New(filepath.Join(Config.BaseDir, "graphs")))
+	// graphs
+	app.Get("/graphs/*", static.New(filepath.Join(Config.BaseDir, "graphs")))
 
-    // web app
-    app.Get("/*", static.New(filepath.Join(Config.BaseDir, "frontend")))
+	// web app
+	app.Get("/*", static.New(filepath.Join(Config.BaseDir, "frontend")))
 
-    log.Fatal(app.Listen(":"+Config.Port))
+	log.Fatal(app.Listen(":" + Config.Port))
 }

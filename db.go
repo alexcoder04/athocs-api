@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/alexcoder04/friendly/v2"
 )
 
 const (
@@ -36,6 +38,61 @@ func GetCurrentFile(timestamp string) (string, error) {
 
 	dateString := parsedDate.Format(DATE_FORMAT)
 	return filepath.Join(Config.DBDir, dateString+".csv"), nil
+}
+
+func GetStationsList() ([]string, error) {
+	f, err := os.Open(filepath.Join(Config.DBDir, "stations-index.csv"))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	reader := csv.NewReader(f)
+
+	// read header
+	_, err = reader.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	var stations []string
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return stations, err
+		}
+
+		stations = append(stations, record[0])
+	}
+
+	return stations, nil
+}
+
+func AddStation(station string) error {
+	stations, err := GetStationsList()
+	if err != nil {
+		return err
+	}
+
+	if friendly.ArrayContains(stations, station) {
+		return nil
+	}
+
+	f, err := os.OpenFile(filepath.Join(Config.DBDir, "stations-index.csv"), os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(fmt.Sprintf(
+		"%s\n",
+		station,
+	))
+	return err
 }
 
 func WriteDatapoint(data *Datapoint) error {
@@ -67,9 +124,10 @@ func WriteDatapoint(data *Datapoint) error {
 		data.Battery,
 	))
 	if err != nil {
-		fmt.Println(err.Error())
+		return err
 	}
-	return err
+
+	return AddStation(data.Station)
 }
 
 func ReadDataForStation(station string, date string, start time.Time, end time.Time) ([]Datapoint, error) {
@@ -81,6 +139,7 @@ func ReadDataForStation(station string, date string, start time.Time, end time.T
 
 	reader := csv.NewReader(f)
 
+	// read header
 	_, err = reader.Read()
 	if err != nil {
 		return nil, err
