@@ -11,7 +11,8 @@ func StationsListHandler(c fiber.Ctx) error {
 	stations, err := GetStationsList()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to load stations list from database",
+			"message": "Failed to load stations list from database",
+			"error":   err.Error(),
 		})
 	}
 
@@ -24,15 +25,16 @@ func DataHandler(c fiber.Ctx) error {
 
 	if err := c.Bind().Query(req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request",
+			"message": "Invalid request",
+			"error":   err.Error(),
 		})
 	}
 
 	data, err := FetchData(req)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error":   "Failed to load data from database",
-			"goError": err.Error(),
+			"message": "Failed to load data from database",
+			"error":   err.Error(),
 		})
 	}
 
@@ -45,7 +47,8 @@ func UploadHandler(c fiber.Ctx) error {
 
 	if err := c.Bind().Body(data); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid data",
+			"message": "Invalid request",
+			"error":   err.Error(),
 		})
 	}
 
@@ -56,7 +59,8 @@ func UploadHandler(c fiber.Ctx) error {
 
 	if err := WriteDatapoint(data); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to write data to database",
+			"message": "Failed to write data to database",
+			"error":   err.Error(),
 		})
 	}
 
