@@ -16,6 +16,10 @@ func SendCSV[T CSVRowData](c fiber.Ctx, data []T) error {
 		csvWriter := csv.NewWriter(w)
 		defer csvWriter.Flush()
 
+		if len(data) == 0 {
+			return
+		}
+
 		if err := csvWriter.Write(data[0].Header()); err != nil {
 			fmt.Fprintf(w, "Error writing CSV header: %v\n", err)
 			return

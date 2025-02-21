@@ -2,9 +2,16 @@ package main
 
 import (
 	"encoding/csv"
+	"errors"
 	"io"
 	"os"
 )
+
+type EmptyRowError struct{}
+
+func (e *EmptyRowError) Error() string {
+	return "This is an empty row"
+}
 
 func ReadCSV[T CSVRowData](p string, parse func([]string) (T, error)) ([]T, error) {
 	f, err := os.Open(p)
@@ -34,6 +41,9 @@ func ReadCSV[T CSVRowData](p string, parse func([]string) (T, error)) ([]T, erro
 		// parse data using given function
 		d, err := parse(record)
 		if err != nil {
+			if errors.Is(err, &EmptyRowError{}) {
+				continue
+			}
 			return data, err
 		}
 		data = append(data, d)

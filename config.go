@@ -8,7 +8,9 @@ import (
 )
 
 type AthocsConfig struct {
-	TimestampFormat string
+	TimestampFormat     string
+	DateFormat          string
+	DefaultDataInterval int
 
 	BaseDir       string
 	DBDir         string
@@ -45,6 +47,7 @@ func GetConfig() AthocsConfig {
 
 	return AthocsConfig{
 		TimestampFormat: "2006-01-02_15:04:05",
+		DateFormat:      "2006-01-02",
 		BaseDir:         baseDir.Path,
 		DBDir:           dbDir.Path,
 		StationsIndex:   filepath.Join(dbDir.Path, "stations-index.csv"),

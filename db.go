@@ -1,19 +1,10 @@
 package main
 
 import (
-	"encoding/csv"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
-)
-
-const (
-	TIMESTAMP_FORMAT            = "2006-01-02_15:04:05"
-	DATE_FORMAT                 = "2006-01-02"
-	DEFAULT_DATA_INTERVAL_HOURS = 24 * 7
 )
 
 // write csv header
@@ -30,12 +21,12 @@ func InitNewFile(filename string) error {
 
 // extract date from full timestamp
 func GetCurrentFile(timestamp string) (string, error) {
-	parsedDate, err := time.Parse(TIMESTAMP_FORMAT, timestamp)
+	parsedDate, err := time.Parse(Config.TimestampFormat, timestamp)
 	if err != nil {
 		return "", err
 	}
 
-	dateString := parsedDate.Format(DATE_FORMAT)
+	dateString := parsedDate.Format(Config.DateFormat)
 	return filepath.Join(Config.DBDir, dateString+".csv"), nil
 }
 
@@ -52,21 +43,7 @@ func WriteDatapoint(data *Datapoint) error {
 		}
 	}
 
-	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	_, err = f.WriteString(fmt.Sprintf(
-		"%s,%s,%.2f,%.2f,%.1f,%d\n",
-		data.Timestamp,
-		data.Station,
-		data.Temperature,
-		data.Humidity,
-		data.Pressure,
-		data.Battery,
-	))
+	err = WriteToCSV(filename, data.ToCSVRow())
 	if err != nil {
 		return err
 	}
@@ -75,58 +52,31 @@ func WriteDatapoint(data *Datapoint) error {
 }
 
 func ReadDataForStation(station string, date string, start time.Time, end time.Time) ([]Datapoint, error) {
-	f, err := os.Open(filepath.Join(Config.DBDir, date+".csv"))
+	// we pass a function that tells how to parse the csv items
+	data, err := ReadCSV(filepath.Join(Config.DBDir, date+".csv"), func(row []string) (Datapoint, error) {
+		// parse data
+		dp, err := DatapointFromCSV(row)
+		if err != nil {
+			return dp, err
+		}
+
+		// check whether we want that datapoint
+		timestamp, _ := time.Parse(Config.TimestampFormat, dp.Timestamp)
+		if dp.Station == station && timestamp.After(start) && timestamp.Before(end) {
+			return dp, nil
+		}
+		// returning an EmptyRowError will make the csv parser discard that datapoint
+		return dp, &EmptyRowError{}
+	})
+
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	defer f.Close()
 
-	reader := csv.NewReader(f)
-
-	// read header
-	_, err = reader.Read()
-	if err != nil {
-		return nil, err
-	}
-
-	var datapoints []Datapoint
-
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return datapoints, err
-		}
-
-		timestamp, err := time.Parse(TIMESTAMP_FORMAT, record[0])
-		if err != nil {
-			return datapoints, err
-		}
-		temperature, _ := strconv.ParseFloat(record[2], 32)
-		humidity, _ := strconv.ParseFloat(record[3], 32)
-		pressure, _ := strconv.ParseFloat(record[4], 32)
-		battery, _ := strconv.ParseUint(record[5], 10, 32)
-
-		datapoint := Datapoint{
-			Timestamp:   record[0],
-			Station:     record[1],
-			Temperature: temperature,
-			Humidity:    humidity,
-			Pressure:    pressure,
-			Battery:     battery,
-		}
-
-		if datapoint.Station == station && timestamp.After(start) && timestamp.Before(end) {
-			datapoints = append(datapoints, datapoint)
-		}
-	}
-
-	return datapoints, nil
+	return data, nil
 }
 
 func FetchData(req *DataRequest) ([]Datapoint, error) {
@@ -135,7 +85,7 @@ func FetchData(req *DataRequest) ([]Datapoint, error) {
 	if req.TimeTo == "" {
 		end = time.Now()
 	} else {
-		end, err = time.Parse(TIMESTAMP_FORMAT, req.TimeTo)
+		end, err = time.Parse(Config.TimestampFormat, req.TimeTo)
 		if err != nil {
 			return nil, err
 		}
@@ -143,9 +93,9 @@ func FetchData(req *DataRequest) ([]Datapoint, error) {
 
 	var start time.Time
 	if req.TimeFrom == "" {
-		start = end.Add(-DEFAULT_DATA_INTERVAL_HOURS * time.Hour)
+		start = end.Add(-time.Duration(Config.DefaultDataInterval) * time.Hour)
 	} else {
-		start, err = time.Parse(TIMESTAMP_FORMAT, req.TimeFrom)
+		start, err = time.Parse(Config.TimestampFormat, req.TimeFrom)
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +107,7 @@ func FetchData(req *DataRequest) ([]Datapoint, error) {
 
 	data := []Datapoint{}
 	for current := start; !current.After(end); current = current.AddDate(0, 0, 1) {
-		curData, err := ReadDataForStation(req.Station, current.Format(DATE_FORMAT), start, end)
+		curData, err := ReadDataForStation(req.Station, current.Format(Config.DateFormat), start, end)
 		if err != nil {
 			return nil, err
 		}
