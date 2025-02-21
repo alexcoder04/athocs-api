@@ -8,13 +8,12 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
-
-	"github.com/alexcoder04/friendly/v2"
 )
 
 const (
-	TIMESTAMP_FORMAT = "2006-01-02_15:04:05"
-	DATE_FORMAT      = "2006-01-02"
+	TIMESTAMP_FORMAT            = "2006-01-02_15:04:05"
+	DATE_FORMAT                 = "2006-01-02"
+	DEFAULT_DATA_INTERVAL_HOURS = 24 * 7
 )
 
 // write csv header
@@ -40,7 +39,7 @@ func GetCurrentFile(timestamp string) (string, error) {
 	return filepath.Join(Config.DBDir, dateString+".csv"), nil
 }
 
-func GetStationsList() ([]string, error) {
+func GetStationsList() ([]Station, error) {
 	f, err := os.Open(filepath.Join(Config.DBDir, "stations-index.csv"))
 	if err != nil {
 		return nil, err
@@ -55,7 +54,7 @@ func GetStationsList() ([]string, error) {
 		return nil, err
 	}
 
-	var stations []string
+	var stations []Station
 
 	for {
 		record, err := reader.Read()
@@ -66,7 +65,14 @@ func GetStationsList() ([]string, error) {
 			return stations, err
 		}
 
-		stations = append(stations, record[0])
+		// TODO auto deactivate stations
+		active, _ := strconv.ParseUint(record[2], 10, 32)
+		st := Station{
+			ID:     record[0],
+			Name:   record[1],
+			Active: uint(active),
+		}
+		stations = append(stations, st)
 	}
 
 	return stations, nil
@@ -78,8 +84,11 @@ func AddStation(station string) error {
 		return err
 	}
 
-	if friendly.ArrayContains(stations, station) {
-		return nil
+	// check if already exists
+	for _, st := range stations {
+		if st.ID == station {
+			return nil
+		}
 	}
 
 	f, err := os.OpenFile(filepath.Join(Config.DBDir, "stations-index.csv"), os.O_APPEND|os.O_WRONLY, 0600)
@@ -89,7 +98,8 @@ func AddStation(station string) error {
 	defer f.Close()
 
 	_, err = f.WriteString(fmt.Sprintf(
-		"%s\n",
+		"%s,%s,1\n",
+		station,
 		station,
 	))
 	return err
@@ -133,6 +143,9 @@ func WriteDatapoint(data *Datapoint) error {
 func ReadDataForStation(station string, date string, start time.Time, end time.Time) ([]Datapoint, error) {
 	f, err := os.Open(filepath.Join(Config.DBDir, date+".csv"))
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	defer f.Close()
@@ -183,14 +196,25 @@ func ReadDataForStation(station string, date string, start time.Time, end time.T
 }
 
 func FetchData(req *DataRequest) ([]Datapoint, error) {
-	start, err := time.Parse(TIMESTAMP_FORMAT, req.TimeFrom)
-	if err != nil {
-		return nil, err
+	var end time.Time
+	var err error
+	if req.TimeTo == "" {
+		end = time.Now()
+	} else {
+		end, err = time.Parse(TIMESTAMP_FORMAT, req.TimeTo)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	end, err := time.Parse(TIMESTAMP_FORMAT, req.TimeTo)
-	if err != nil {
-		return nil, err
+	var start time.Time
+	if req.TimeFrom == "" {
+		start = end.Add(-DEFAULT_DATA_INTERVAL_HOURS * time.Hour)
+	} else {
+		start, err = time.Parse(TIMESTAMP_FORMAT, req.TimeFrom)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if start.After(end) {

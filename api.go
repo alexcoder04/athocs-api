@@ -25,14 +25,17 @@ func StationsListHandler(c fiber.Ctx) error {
 	return c.SendStreamWriter(func(w *bufio.Writer) {
 		csvWriter := csv.NewWriter(w)
 
-		header := []string{"id"}
+		header := []string{"id", "name"}
 		if err := csvWriter.Write(header); err != nil {
 			fmt.Fprintf(w, "Error writing CSV header: %v\n", err)
 			return
 		}
 
 		for _, st := range stations {
-			row := []string{st}
+			if st.Active == 0 {
+				continue
+			}
+			row := []string{st.ID, st.Name}
 			if err := csvWriter.Write(row); err != nil {
 				fmt.Fprintf(w, "Error writing CSV row: %v\n", err)
 				return
