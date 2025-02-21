@@ -1,9 +1,33 @@
 package main
 
+import "fmt"
+
+type DataRequest struct {
+	Station  string `query:"station"`
+	TimeFrom string `query:"time_from"`
+	TimeTo   string `query:"time_to"`
+}
+
 type Station struct {
 	ID     string `form:"id" json:"id"`
 	Name   string `form:"name" json:"name"`
 	Active uint   `form:"active" json:"active"`
+}
+
+func (st Station) ToCSVRow() []string {
+	return []string{
+		st.ID,
+		st.Name,
+		fmt.Sprintf("%d", st.Active),
+	}
+}
+
+func (st Station) Header() []string {
+	return []string{"id", "name", "active"}
+}
+
+func (st Station) Hidden() bool {
+	return st.Active == 0
 }
 
 type Datapoint struct {
@@ -15,8 +39,28 @@ type Datapoint struct {
 	Battery     uint    `form:"battery" json:"battery"`
 }
 
-type DataRequest struct {
-	Station  string `query:"station"`
-	TimeFrom string `query:"time_from"`
-	TimeTo   string `query:"time_to"`
+func (d Datapoint) ToCSVRow() []string {
+	return []string{
+		d.Timestamp,
+		d.Station,
+		fmt.Sprintf("%f", d.Temperature),
+		fmt.Sprintf("%f", d.Humidity),
+		fmt.Sprintf("%f", d.Pressure),
+		fmt.Sprintf("%d", d.Battery),
+	}
+}
+
+func (d Datapoint) Header() []string {
+	return []string{"timestamp", "station", "temperature", "humidity", "pressure", "battery"}
+}
+
+func (d Datapoint) Hidden() bool {
+	return false
+}
+
+type CSVRowData interface {
+	Station | Datapoint
+	Header() []string
+	ToCSVRow() []string
+	Hidden() bool
 }

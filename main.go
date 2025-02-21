@@ -27,9 +27,9 @@ func main() {
 	}
 
 	// api
+	app.Get("/api/stations", StationsListHandler)
 	app.Get("/api/data", DataHandler)
 	app.Post("/api/upload", UploadHandler)
-	app.Get("/api/stations", StationsListHandler)
 
 	// graphs
 	app.Get("/graphs/*", static.New(filepath.Join(Config.BaseDir, "graphs")))
