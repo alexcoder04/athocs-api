@@ -14,6 +14,7 @@ func SendCSV[T CSVRowData](c fiber.Ctx, data []T) error {
 
 	return c.SendStreamWriter(func(w *bufio.Writer) {
 		csvWriter := csv.NewWriter(w)
+		defer csvWriter.Flush()
 
 		if err := csvWriter.Write(data[0].Header()); err != nil {
 			fmt.Fprintf(w, "Error writing CSV header: %v\n", err)
@@ -30,7 +31,5 @@ func SendCSV[T CSVRowData](c fiber.Ctx, data []T) error {
 				return
 			}
 		}
-
-		csvWriter.Flush()
 	})
 }

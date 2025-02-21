@@ -8,7 +8,7 @@ import (
 
 // get list of existing stations
 func StationsListHandler(c fiber.Ctx) error {
-	stations, err := GetStationsList()
+	stations, err := GetStations()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"message": "Failed to load stations list from database",

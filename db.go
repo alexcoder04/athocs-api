@@ -39,72 +39,6 @@ func GetCurrentFile(timestamp string) (string, error) {
 	return filepath.Join(Config.DBDir, dateString+".csv"), nil
 }
 
-func GetStationsList() ([]Station, error) {
-	f, err := os.Open(filepath.Join(Config.DBDir, "stations-index.csv"))
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	reader := csv.NewReader(f)
-
-	// read header
-	_, err = reader.Read()
-	if err != nil {
-		return nil, err
-	}
-
-	var stations []Station
-
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return stations, err
-		}
-
-		// TODO auto deactivate stations
-		active, _ := strconv.ParseUint(record[2], 10, 32)
-		st := Station{
-			ID:     record[0],
-			Name:   record[1],
-			Active: uint(active),
-		}
-		stations = append(stations, st)
-	}
-
-	return stations, nil
-}
-
-func AddStation(station string) error {
-	stations, err := GetStationsList()
-	if err != nil {
-		return err
-	}
-
-	// check if already exists
-	for _, st := range stations {
-		if st.ID == station {
-			return nil
-		}
-	}
-
-	f, err := os.OpenFile(filepath.Join(Config.DBDir, "stations-index.csv"), os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	_, err = f.WriteString(fmt.Sprintf(
-		"%s,%s,1\n",
-		station,
-		station,
-	))
-	return err
-}
-
 func WriteDatapoint(data *Datapoint) error {
 	filename, err := GetCurrentFile(data.Timestamp)
 	if err != nil {
@@ -181,10 +115,10 @@ func ReadDataForStation(station string, date string, start time.Time, end time.T
 		datapoint := Datapoint{
 			Timestamp:   record[0],
 			Station:     record[1],
-			Temperature: float32(temperature),
-			Humidity:    float32(humidity),
-			Pressure:    float32(pressure),
-			Battery:     uint(battery),
+			Temperature: temperature,
+			Humidity:    humidity,
+			Pressure:    pressure,
+			Battery:     battery,
 		}
 
 		if datapoint.Station == station && timestamp.After(start) && timestamp.Before(end) {
