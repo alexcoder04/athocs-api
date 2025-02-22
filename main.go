@@ -26,9 +26,15 @@ func main() {
 		}))
 	}
 
+	err := LiveDB.Init()
+	if err != nil {
+		log.Fatalf("Failed to init LiveDB, %s\n", err.Error())
+	}
+
 	// api
 	app.Get("/api/stations", StationsListHandler)
 	app.Get("/api/data", DataHandler)
+	app.Get("/api/data/live", DataLiveHandler)
 	app.Post("/api/upload", UploadHandler)
 
 	// graphs

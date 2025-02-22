@@ -41,6 +41,12 @@ func DataHandler(c fiber.Ctx) error {
 	return SendCSV(c, data)
 }
 
+// latest values
+func DataLiveHandler(c fiber.Ctx) error {
+	data := FetchLatestData()
+	return SendCSV(c, data)
+}
+
 // upload new data to db
 func UploadHandler(c fiber.Ctx) error {
 	data := new(Datapoint)

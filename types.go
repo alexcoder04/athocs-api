@@ -34,13 +34,17 @@ func (st Station) Hidden() bool {
 	return st.Active == 0
 }
 
-func StationFromCSV(row []string) (Station, error) {
+func StationFromCSV(row []string) (*Station, error) {
 	active, err := strconv.ParseUint(row[2], 10, 32)
-	return Station{
+	if err != nil {
+		return nil, err
+	}
+
+	return &Station{
 		ID:     row[0],
 		Name:   row[1],
 		Active: active,
-	}, err
+	}, nil
 }
 
 type Datapoint struct {
@@ -71,11 +75,11 @@ func (d Datapoint) Hidden() bool {
 	return false
 }
 
-func DatapointFromCSV(row []string) (Datapoint, error) {
+func DatapointFromCSV(row []string) (*Datapoint, error) {
 	// validate that timestamp is valid
 	_, err := time.Parse(Config.TimestampFormat, row[0])
 	if err != nil {
-		return Datapoint{}, err
+		return nil, err
 	}
 
 	temperature, _ := strconv.ParseFloat(row[2], 32)
@@ -83,7 +87,7 @@ func DatapointFromCSV(row []string) (Datapoint, error) {
 	pressure, _ := strconv.ParseFloat(row[4], 32)
 	battery, _ := strconv.ParseUint(row[5], 10, 32)
 
-	return Datapoint{
+	return &Datapoint{
 		Timestamp:   row[0],
 		Station:     row[1],
 		Temperature: temperature,

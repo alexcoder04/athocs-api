@@ -19,30 +19,33 @@ func WriteDatapoint(data *Datapoint) error {
 		}
 	}
 
+	// write to persistent db
 	err = WriteToCSV(filename, data.ToCSVRow())
 	if err != nil {
 		return err
 	}
 
+	// write to live db
+	LiveDB.Set(*data)
+
 	return AddStation(data.Station)
 }
 
-func ReadDataForStation(station string, date string, start time.Time, end time.Time) ([]Datapoint, error) {
+func ReadDataForStation(station string, date string, start *time.Time, end *time.Time) ([]Datapoint, error) {
 	// we pass a function that tells how to parse the csv items
-	data, err := ReadCSV(filepath.Join(Config.DBDir, date+".csv"), func(row []string) (Datapoint, error) {
+	data, err := ReadCSV(filepath.Join(Config.DBDir, date+".csv"), func(row []string) (*Datapoint, error) {
 		// parse data
 		dp, err := DatapointFromCSV(row)
 		if err != nil {
-			return dp, err
+			return nil, err
 		}
 
 		// check whether we want that datapoint
 		timestamp, _ := time.Parse(Config.TimestampFormat, dp.Timestamp)
-		if dp.Station == station && timestamp.After(start) && timestamp.Before(end) {
+		if dp.Station == station && timestamp.After(*start) && timestamp.Before(*end) {
 			return dp, nil
 		}
-		// returning an EmptyRowError will make the csv parser discard that datapoint
-		return dp, &EmptyRowError{}
+		return nil, nil
 	})
 
 	if err != nil {
@@ -63,7 +66,8 @@ func FetchData(req *DataRequest) ([]Datapoint, error) {
 	}
 
 	data := []Datapoint{}
-	for current := start; !current.After(end); current = current.AddDate(0, 0, 1) {
+	// run through dates
+	for current := *start; !current.After(*end); current = current.Add(24 * time.Hour) {
 		curData, err := ReadDataForStation(req.Station, current.Format(Config.DateFormat), start, end)
 		if err != nil {
 			return nil, err
@@ -73,4 +77,12 @@ func FetchData(req *DataRequest) ([]Datapoint, error) {
 	}
 
 	return data, nil
+}
+
+func FetchLatestData() []Datapoint {
+	data := []Datapoint{}
+	for _, dp := range LiveDB.Data {
+		data = append(data, dp)
+	}
+	return data
 }

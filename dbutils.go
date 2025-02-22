@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,13 +9,7 @@ import (
 	"time"
 )
 
-type EmptyRowError struct{}
-
-func (e *EmptyRowError) Error() string {
-	return "This is an empty row"
-}
-
-func ReadCSV[T CSVRowData](p string, parse func([]string) (T, error)) ([]T, error) {
+func ReadCSV[T CSVRowData](p string, parse func([]string) (*T, error)) ([]T, error) {
 	f, err := os.Open(p)
 	if err != nil {
 		return nil, err
@@ -44,12 +37,13 @@ func ReadCSV[T CSVRowData](p string, parse func([]string) (T, error)) ([]T, erro
 		// parse data using given function
 		d, err := parse(record)
 		if err != nil {
-			if errors.Is(err, &EmptyRowError{}) {
-				continue
-			}
 			return data, err
 		}
-		data = append(data, d)
+
+		// append the datapoint to the list if it is real
+		if d != nil {
+			data = append(data, *d)
+		}
 	}
 
 	return data, nil
@@ -91,7 +85,7 @@ func GetCurrentFile(timestamp string) (string, error) {
 	return filepath.Join(Config.DBDir, dateString+".csv"), nil
 }
 
-func GetStartEndTime(start string, end string) (time.Time, time.Time, error) {
+func GetStartEndTime(start string, end string) (*time.Time, *time.Time, error) {
 	var endTime time.Time
 	var startTime time.Time
 	var err error
@@ -101,7 +95,7 @@ func GetStartEndTime(start string, end string) (time.Time, time.Time, error) {
 	} else {
 		endTime, err = time.Parse(Config.TimestampFormat, end)
 		if err != nil {
-			return startTime, endTime, err
+			return nil, nil, err
 		}
 	}
 
@@ -110,13 +104,13 @@ func GetStartEndTime(start string, end string) (time.Time, time.Time, error) {
 	} else {
 		startTime, err = time.Parse(Config.TimestampFormat, start)
 		if err != nil {
-			return startTime, endTime, err
+			return nil, nil, err
 		}
 	}
 
 	if startTime.After(endTime) {
-		return startTime, endTime, fmt.Errorf("start timestamp must be before end timestamp")
+		return nil, nil, fmt.Errorf("start timestamp must be before end timestamp")
 	}
 
-	return startTime, endTime, nil
+	return &startTime, &endTime, nil
 }
