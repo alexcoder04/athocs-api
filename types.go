@@ -56,9 +56,9 @@ func (d Datapoint) ToCSVRow() []string {
 	return []string{
 		d.Timestamp,
 		d.Station,
-		fmt.Sprintf("%f", d.Temperature),
-		fmt.Sprintf("%f", d.Humidity),
-		fmt.Sprintf("%f", d.Pressure),
+		fmt.Sprintf("%.2f", d.Temperature),
+		fmt.Sprintf("%.2f", d.Humidity),
+		fmt.Sprintf("%.2f", d.Pressure),
 		fmt.Sprintf("%d", d.Battery),
 	}
 }

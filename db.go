@@ -1,34 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 )
-
-// write csv header
-func InitNewFile(filename string) error {
-	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	_, err = f.WriteString("timestamp,station,temperature,humidity,pressure,battery\n")
-	return err
-}
-
-// extract date from full timestamp
-func GetCurrentFile(timestamp string) (string, error) {
-	parsedDate, err := time.Parse(Config.TimestampFormat, timestamp)
-	if err != nil {
-		return "", err
-	}
-
-	dateString := parsedDate.Format(Config.DateFormat)
-	return filepath.Join(Config.DBDir, dateString+".csv"), nil
-}
 
 func WriteDatapoint(data *Datapoint) error {
 	filename, err := GetCurrentFile(data.Timestamp)
@@ -79,30 +55,11 @@ func ReadDataForStation(station string, date string, start time.Time, end time.T
 	return data, nil
 }
 
+// this is the actual function called by the route handler
 func FetchData(req *DataRequest) ([]Datapoint, error) {
-	var end time.Time
-	var err error
-	if req.TimeTo == "" {
-		end = time.Now()
-	} else {
-		end, err = time.Parse(Config.TimestampFormat, req.TimeTo)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	var start time.Time
-	if req.TimeFrom == "" {
-		start = end.Add(-time.Duration(Config.DefaultDataInterval) * time.Hour)
-	} else {
-		start, err = time.Parse(Config.TimestampFormat, req.TimeFrom)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if start.After(end) {
-		return nil, fmt.Errorf("start timestamp must be before or equal to end timestamp")
+	start, end, err := GetStartEndTime(req.TimeFrom, req.TimeTo)
+	if err != nil {
+		return nil, err
 	}
 
 	data := []Datapoint{}
