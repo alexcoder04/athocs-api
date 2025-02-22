@@ -105,10 +105,10 @@ func GetStartEndTime(start string, end string) (time.Time, time.Time, error) {
 		}
 	}
 
-	if end == "" {
+	if start == "" {
 		startTime = time.Now().Add(-time.Duration(Config.DefaultDataInterval) * time.Hour)
 	} else {
-		startTime, err = time.Parse(Config.TimestampFormat, end)
+		startTime, err = time.Parse(Config.TimestampFormat, start)
 		if err != nil {
 			return startTime, endTime, err
 		}
